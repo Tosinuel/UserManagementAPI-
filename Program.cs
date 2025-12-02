@@ -76,15 +76,24 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // Apply migrations (if any) and ensure DB is created
-    db.Database.Migrate();
+    // Apply migrations (if any). If migrations tooling isn't available in this environment,
+    // fall back to EnsureCreated to create schema for development use.
+    try
+    {
+        db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("[WARN] Could not apply migrations via Migrate(): falling back to EnsureCreated().\n" + ex.Message);
+        db.Database.EnsureCreated();
+    }
 
     // Seed an admin user if missing. Use ADMIN_PASSWORD env var or generated secure password.
     var adminUsername = builder.Configuration["Admin:Username"] ?? Environment.GetEnvironmentVariable("ADMIN__USERNAME") ?? "admin";
-    var adminUser = db.AppUsers.FirstOrDefault(u => u.Username == adminUsername);
+    UserManagementAPI.Models.AppUser? adminUser = db.AppUsers.FirstOrDefault(u => u.Username == adminUsername);
     if (adminUser == null)
     {
-        string adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? builder.Configuration["Admin:Password"];
+        string? adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? builder.Configuration["Admin:Password"];
         if (string.IsNullOrWhiteSpace(adminPassword))
         {
             // Generate a secure random password and log it (development only)
