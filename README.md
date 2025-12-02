@@ -106,3 +106,32 @@ git push -u origin main
 ```
 
 Be sure your local machine has appropriate access (SSH key or credentials) to push to the remote repo.
+
+Migrations and seeding
+
+- This project is configured to use EF Core migrations. To create and apply migrations locally you need the `dotnet-ef` tool installed. On your machine run:
+
+```powershell
+dotnet tool install --global dotnet-ef
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
+
+- The app will also call `Database.Migrate()` at startup to apply any pending migrations.
+
+Seeding & secrets
+
+- The admin user is seeded at startup if one does not exist. You should NOT leave a generated or default password in production. Provide an admin password via the environment variable `ADMIN_PASSWORD` before first start, or set `Admin:Password` in a secure `appsettings.Production.json` (prefer a secrets manager or environment variables instead):
+
+```powershell
+$env:ADMIN_PASSWORD = "<strong-password>"
+dotnet run
+```
+
+- JWT secrets and other production secrets should be provided via environment variables or a secret manager. Example environment variables recognized:
+
+	- `JWT__KEY` (the symmetric key used to sign tokens)
+	- `JWT__ISSUER`
+	- `JWT__AUDIENCE`
+
+When a secure admin password is not provided, the app will generate a secure random password and print it to the console (development convenience only). Replace this with a proper secret provisioning flow for production.
